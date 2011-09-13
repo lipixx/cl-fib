@@ -2,8 +2,10 @@ ELFNAME=compiler
 
 all:    parser scanner compile
 
-dbg:	parser scanner
-	gcc -gs -I/usr/include/pccts -o  $(ELFNAME).c scan.c err.c
+dbg:
+	antlr -gs $(ELFNAME).g
+	dlg parser.dlg scan.c
+	gcc -I/usr/include/pccts -o $(ELFNAME) $(ELFNAME).c scan.c err.c
 
 compile:
 	gcc -I/usr/include/pccts -o $(ELFNAME) $(ELFNAME).c scan.c err.c
