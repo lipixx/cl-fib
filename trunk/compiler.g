@@ -18,4 +18,4 @@ int main() {
 #token DIV "\/"
 #token SPACE "[\ \n]" << zzskip(); >>
 input: expr "@";
-expr: NUM ((PLUS | MINUS) NUM)*; 
+expr: NUM ((PLUS | MINUS) expr | ); 
