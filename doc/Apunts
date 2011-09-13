@@ -1,0 +1,13 @@
+Associativitat esquerra:
+------------------------
+Per exemple la potència (3^(4^5))
+expr: NUM (MAS^ NUM)*
+
+
+Associativitat dreta:
+----------------------
+L'arbre es va desenvolupant cap a la dreta. Els operadors habituals com +,*,/,-,etc.
+
+expr: NUM (MAS^ expr | )
+
+
