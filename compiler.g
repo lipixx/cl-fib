@@ -49,7 +49,7 @@ void ASTPrint(AST *a)
 int main()
 {
   AST *root=NULL;
-  ANTLR(expr(&root),stdin);
+  ANTLR(input(&root),stdin);
   ASTPrint(root);
 }
 >>
@@ -57,6 +57,7 @@ int main()
 #lexclass START
 #token NUM "[0-9]+"
 #token PLUS "\+"
+#token MINUS "\-"
 #token SPACE "[\ \n]" << zzskip();>>
-
-expr: NUM (PLUS^ NUM )*;
+input: expr;
+expr: NUM ((PLUS^|MINUS^) NUM)*;
