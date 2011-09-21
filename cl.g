@@ -210,9 +210,12 @@ int main(int argc,char *argv[])
 #token STRUCT       "STRUCT"
 #token ENDSTRUCT    "ENDSTRUCT"
 #token WRITELN      "WRITELN"
-#token PLUS         "\+"
 #token OPENPAR      "\("
 #token CLOSEPAR     "\)"
+#token DIV          "\/"
+#token MUL          "\*"
+#token PLUS         "\+"
+#token MINUS         "\-"
 #token ASIG         ":="
 #token DOT          "."
 #token IDENT        "[a-zA-Z][a-zA-Z0-9]*"
@@ -248,9 +251,11 @@ instruction:
         IDENT ( DOT^ IDENT)* ASIG^ expression
       |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR!;
 
-expression: expsimple (PLUS^ expsimple)*;
+expression: exp_sumrest | OPENPAR exp_sumrest CLOSEPAR ;
+ 
+exp_sumrest: exp_muldiv (PLUS^ exp_muldiv | MINUS^ exp_muldiv)*;
+
+exp_muldiv: expsimple (MUL^ expsimple | DIV^ expsimple)*;
 
 expsimple:
-        IDENT^ (DOT^ IDENT)*
-      | INTCONST
-      ;
+         IDENT^ (DOT^ IDENT)* | INTCONST;
