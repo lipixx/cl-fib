@@ -251,11 +251,9 @@ instruction:
         IDENT ( DOT^ IDENT)* ASIG^ expression
       |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR!;
 
-expression: exp_sumrest | OPENPAR exp_sumrest CLOSEPAR ;
- 
-exp_sumrest: exp_muldiv (PLUS^ exp_muldiv | MINUS^ exp_muldiv)*;
+expression: exp_muldiv (PLUS^ exp_muldiv | MINUS^ exp_muldiv)*;
 
 exp_muldiv: expsimple (MUL^ expsimple | DIV^ expsimple)*;
 
 expsimple:
-         IDENT^ (DOT^ IDENT)* | INTCONST;
+         IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!);
