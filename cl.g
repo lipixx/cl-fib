@@ -216,7 +216,6 @@ int main(int argc,char *argv[])
 #token CLOSEPAR     "\)"
 #token OPENBRACK    "\["
 #token CLOSEBRACK   "\]"
-#token SIGN         "\-"
 #token NOT          "NOT"
 #token DIV          "\/"
 #token MUL          "\*"
@@ -265,15 +264,15 @@ instruction:
 
 expression: expr_logica;
 
-expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
-
-expr_muldiv: expr_unaria (MUL^ expr_unaria | DIV^ expr_unaria)*;
-
 expr_logica: expr_comparacio ((AND^|OR^)expr_comparacio)*;
 
 expr_comparacio: expr_aritm ((GT^|LT^|EQ^)expr_aritm)*;
 
-expr_unaria: (SIGN | NOT^)* exprsimple;
+expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
+
+expr_muldiv: expr_unaria (MUL^ expr_unaria | DIV^ expr_unaria)*;
+
+expr_unaria: (NOT^ | MINUS^)* exprsimple;
 
 exprsimple:
         IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!) | TRUEKWD | FALSEKWD;
