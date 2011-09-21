@@ -207,17 +207,29 @@ int main(int argc,char *argv[])
 #token VARS         "VARS"
 #token ENDVARS      "ENDVARS"
 #token INT          "INT"
+#token BOOL         "BOOL"
 #token STRUCT       "STRUCT"
 #token ENDSTRUCT    "ENDSTRUCT"
 #token WRITELN      "WRITELN"
+#token DOT          "."
 #token OPENPAR      "\("
 #token CLOSEPAR     "\)"
+#token OPENBRACK    "\["
+#token CLOSEBRACK   "\]"
+#token SIGN         "\-"
+#token NOT          "NOT"
 #token DIV          "\/"
 #token MUL          "\*"
 #token PLUS         "\+"
 #token MINUS         "\-"
+#token EQ           "="
+#token GT           ">"
+#token LT           "<"
+#token AND          "AND"
+#token OR           "OR"
 #token ASIG         ":="
-#token DOT          "."
+#token TRUEKWD      "TRUE"
+#token FALSEKWD     "FALSE"
 #token IDENT        "[a-zA-Z][a-zA-Z0-9]*"
 #token INTCONST     "[0-9]+"
 #token COMMENT      "//~[\n]*" << printf("%s",zzlextext); zzskip(); >>
@@ -241,7 +253,7 @@ l_dec_blocs: ( dec_bloc )* <<#0=createASTlist(_sibling);>> ;
 dec_bloc: (PROCEDURE^ ENDPROCEDURE |
            FUNCTION^ ENDFUNCTION)<</*needs modification*/ >>;
 
-constr_type: INT | STRUCT^ (field)* ENDSTRUCT!;
+constr_type: INT | BOOL | STRUCT^ (field)* ENDSTRUCT!;
 
 field: IDENT^ constr_type;
 
@@ -251,9 +263,17 @@ instruction:
         IDENT ( DOT^ IDENT)* ASIG^ expression
       |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR!;
 
-expression: exp_muldiv (PLUS^ exp_muldiv | MINUS^ exp_muldiv)*;
+expression: expr_logica;
 
-exp_muldiv: expsimple (MUL^ expsimple | DIV^ expsimple)*;
+expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
 
-expsimple:
-         IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!);
+expr_muldiv: expr_unaria (MUL^ expr_unaria | DIV^ expr_unaria)*;
+
+expr_logica: expr_comparacio ((AND^|OR^)expr_comparacio)*;
+
+expr_comparacio: expr_aritm ((GT^|LT^|EQ^)expr_aritm)*;
+
+expr_unaria: (SIGN | NOT^)* exprsimple;
+
+exprsimple:
+        IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!) | TRUEKWD | FALSEKWD;
