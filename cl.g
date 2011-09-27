@@ -211,6 +211,11 @@ int main(int argc,char *argv[])
 #token STRUCT       "STRUCT"
 #token ENDSTRUCT    "ENDSTRUCT"
 #token WRITELN      "WRITELN"
+#token IF           "IF"
+#token IFNOT        "NOT"
+#token THEN         "THEN"
+#token ELSE         "ELSE"
+#token WHILE        "WHILE"
 #token DOT          "."
 #token OPENPAR      "\("
 #token CLOSEPAR     "\)"
@@ -270,9 +275,7 @@ expr_comparacio: expr_aritm ((GT^|LT^|EQ^)expr_aritm)*;
 
 expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
 
-expr_muldiv: expr_unaria (MUL^ expr_unaria | DIV^ expr_unaria)*;
-
-expr_unaria: (NOT^ | MINUS^)* exprsimple;
+expr_muldiv: exprsimple (MUL^ exprsimple | DIV^ exprsimple)*;
 
 exprsimple:
-        IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!) | TRUEKWD | FALSEKWD;
+        IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!) | TRUEKWD | FALSEKWD | (NOT^ | MINUS^) exprsimple;
