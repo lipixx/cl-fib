@@ -212,10 +212,11 @@ int main(int argc,char *argv[])
 #token ENDSTRUCT    "ENDSTRUCT"
 #token WRITELN      "WRITELN"
 #token IF           "IF"
-#token IFNOT        "NOT"
 #token THEN         "THEN"
 #token ELSE         "ELSE"
 #token WHILE        "WHILE"
+#token DO           "DO"
+#token ENDWHILE     "ENDWHILE"
 #token DOT          "."
 #token OPENPAR      "\("
 #token CLOSEPAR     "\)"
@@ -265,7 +266,9 @@ l_instrs: (instruction)* <<#0=createASTlist(_sibling);>>;
 
 instruction:
         IDENT ( DOT^ IDENT)* ASIG^ expression
-      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR!;
+      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! | construccio_algor;
+
+construccio_algor: (IF expr_logica THEN (instruction)* (ELSE instruction)* ENDIF)|(WHILE expr_logica DO (instruction)* ENDWHILE);
 
 expression: expr_logica;
 
