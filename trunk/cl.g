@@ -204,16 +204,23 @@ int main(int argc,char *argv[])
 #lexclass START
 #token PROGRAM      "PROGRAM"
 #token ENDPROGRAM   "ENDPROGRAM"
+#token PROCEDURE    "PROCEDURE"
+#token ENDPROCEDURE "ENDPROCEDURE"
+#token FUNCTION     "FUNCTION"
+#token ENDFUNCTION  "ENDFUNCTION"
 #token VARS         "VARS"
 #token ENDVARS      "ENDVARS"
 #token INT          "INT"
 #token BOOL         "BOOL"
 #token STRUCT       "STRUCT"
+#token ARRAY        "ARRAY"
+#token OF           "OF"
 #token ENDSTRUCT    "ENDSTRUCT"
 #token WRITELN      "WRITELN"
 #token IF           "IF"
 #token THEN         "THEN"
 #token ELSE         "ELSE"
+#token ENDIF        "ENDIF"
 #token WHILE        "WHILE"
 #token DO           "DO"
 #token ENDWHILE     "ENDWHILE"
@@ -258,7 +265,7 @@ l_dec_blocs: ( dec_bloc )* <<#0=createASTlist(_sibling);>> ;
 dec_bloc: (PROCEDURE^ ENDPROCEDURE |
            FUNCTION^ ENDFUNCTION)<</*needs modification*/ >>;
 
-constr_type: INT | BOOL | STRUCT^ (field)* ENDSTRUCT!;
+constr_type: INT | BOOL | STRUCT^ (field)* ENDSTRUCT! | ARRAY^ OPENBRACK! INTCONST CLOSEBRACK! OF! constr_type;
 
 field: IDENT^ constr_type;
 
@@ -266,13 +273,9 @@ l_instrs: (instruction)* <<#0=createASTlist(_sibling);>>;
 
 instruction:
         IDENT ( DOT^ IDENT)* ASIG^ expression
-      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! | construccio_algor;
+      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! | IF^ expression THEN! l_instrs (ELSE! l_instrs)* ENDIF! | WHILE^ expression DO! l_instrs ENDWHILE!;
 
-construccio_algor: (IF expr_logica THEN (instruction)* (ELSE instruction)* ENDIF)|(WHILE expr_logica DO (instruction)* ENDWHILE);
-
-expression: expr_logica;
-
-expr_logica: expr_comparacio ((AND^|OR^)expr_comparacio)*;
+expression: expr_comparacio ((AND^|OR^)expr_comparacio)*;
 
 expr_comparacio: expr_aritm ((GT^|LT^|EQ^)expr_aritm)*;
 
@@ -280,5 +283,6 @@ expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
 
 expr_muldiv: exprsimple (MUL^ exprsimple | DIV^ exprsimple)*;
 
-exprsimple:
-        IDENT^ (DOT^ IDENT)* | INTCONST | (OPENPAR! expression CLOSEPAR!) | TRUEKWD | FALSEKWD | (NOT^ | MINUS^) exprsimple;
+exprsimple: IDENT^ ((DOT^ IDENT)|expr_id)* | INTCONST | OPENPAR! expression CLOSEPAR! | TRUEKWD | FALSEKWD | (NOT^ | MINUS^) exprsimple;
+        
+expr_id: OPENBRACK^ expression CLOSEBRACK! ;
