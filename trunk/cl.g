@@ -272,8 +272,8 @@ field: IDENT^ constr_type;
 l_instrs: (instruction)* <<#0=createASTlist(_sibling);>>;
 
 instruction:
-        IDENT ( DOT^ IDENT)* ASIG^ expression
-      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! | IF^ expression THEN! l_instrs (ELSE! l_instrs)* ENDIF! | WHILE^ expression DO! l_instrs ENDWHILE!;
+        expr_id (ASIG^ expression| )
+      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! | IF^ expression THEN! l_instrs (ELSE! l_instrs| ) ENDIF! | WHILE^ expression DO! l_instrs ENDWHILE!;
 
 expression: expr_comparacio ((AND^|OR^)expr_comparacio)*;
 
@@ -283,6 +283,6 @@ expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
 
 expr_muldiv: exprsimple (MUL^ exprsimple | DIV^ exprsimple)*;
 
-exprsimple: IDENT^ ((DOT^ IDENT)|expr_id)* | INTCONST | OPENPAR! expression CLOSEPAR! | TRUEKWD | FALSEKWD | (NOT^ | MINUS^) exprsimple;
+exprsimple: expr_id | INTCONST | OPENPAR! expression CLOSEPAR! | TRUEKWD | FALSEKWD | (NOT^ | MINUS^) exprsimple;
         
-expr_id: OPENBRACK^ expression CLOSEBRACK! ;
+expr_id: IDENT ((DOT^ IDENT) | (OPENBRACK^ expression CLOSEBRACK!))* ;
