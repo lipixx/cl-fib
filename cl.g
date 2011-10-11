@@ -208,7 +208,10 @@ int main(int argc,char *argv[])
 #token ENDPROCEDURE "ENDPROCEDURE"
 #token FUNCTION     "FUNCTION"
 #token ENDFUNCTION  "ENDFUNCTION"
+#token COMA         ","
 #token VARS         "VARS"
+#token VAL          "VAL"
+#token REF          "REF"
 #token ENDVARS      "ENDVARS"
 #token INT          "INT"
 #token BOOL         "BOOL"
@@ -262,8 +265,7 @@ dec_var: IDENT^ constr_type;
 
 l_dec_blocs: ( dec_bloc )* <<#0=createASTlist(_sibling);>> ;
 
-dec_bloc: (PROCEDURE^ ENDPROCEDURE |
-           FUNCTION^ ENDFUNCTION)<</*needs modification*/ >>;
+dec_bloc: (PROCEDURE^ func_proc l_dec_blocs l_instrs ENDPROCEDURE | FUNCTION^ ENDFUNCTION);
 
 constr_type: INT | BOOL | STRUCT^ (field)* ENDSTRUCT! | ARRAY^ OPENBRACK! INTCONST CLOSEBRACK! OF! constr_type;
 
@@ -273,7 +275,9 @@ l_instrs: (instruction)* <<#0=createASTlist(_sibling);>>;
 
 instruction:
         expr_id (ASIG^ expression| )
-      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! | IF^ expression THEN! l_instrs (ELSE! l_instrs| ) ENDIF! | WHILE^ expression DO! l_instrs ENDWHILE!;
+      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! 
+      | IF^ expression THEN! l_instrs (ELSE! l_instrs| ) ENDIF! 
+      | WHILE^ expression DO! l_instrs ENDWHILE! ;
 
 expression: expr_comparacio ((AND^|OR^)expr_comparacio)*;
 
@@ -283,6 +287,19 @@ expr_aritm: expr_muldiv (PLUS^ expr_muldiv | MINUS^ expr_muldiv)*;
 
 expr_muldiv: exprsimple (MUL^ exprsimple | DIV^ exprsimple)*;
 
-exprsimple: expr_id | INTCONST | OPENPAR! expression CLOSEPAR! | TRUEKWD | FALSEKWD | (NOT^ | MINUS^) exprsimple;
+exprsimple: expr_id 
+           | INTCONST 
+           | OPENPAR! expression CLOSEPAR! 
+           | TRUEKWD | FALSEKWD 
+           | (NOT^ | MINUS^) exprsimple;
         
-expr_id: IDENT ((DOT^ IDENT) | (OPENBRACK^ expression CLOSEBRACK!))* ;
+expr_id: IDENT ( 
+                  (OPENPAR! call_params CLOSEPAR!)  
+                  | ((DOT^ IDENT) | (OPENBRACK^ expression CLOSEBRACK!))* 
+               ) ;
+
+func_proc: IDENT OPENPAR! ( (definition_params)* ) CLOSEPAR!;
+
+definition_params: (VAL|REF) dec_var;
+
+call_params: (expression (COMA! expression)*| );
