@@ -55,6 +55,10 @@ void zzcr_attr(Attrib *attr,int type,char *text)
     attr->kind="intconst";
     attr->text=text;
     break;
+  case STRING:
+    attr->kind="string";
+    attr->text=text;
+    break;
   default:
     attr->kind=lowercase(text);
     attr->text="";
@@ -212,6 +216,7 @@ int main(int argc,char *argv[])
 #token VARS         "VARS"
 #token VAL          "VAL"
 #token REF          "REF"
+#token RETURN       "RETURN"
 #token ENDVARS      "ENDVARS"
 #token INT          "INT"
 #token BOOL         "BOOL"
@@ -219,6 +224,8 @@ int main(int argc,char *argv[])
 #token ARRAY        "ARRAY"
 #token OF           "OF"
 #token ENDSTRUCT    "ENDSTRUCT"
+#token READ         "READ"
+#token WRITE        "WRITE"
 #token WRITELN      "WRITELN"
 #token IF           "IF"
 #token THEN         "THEN"
@@ -245,6 +252,7 @@ int main(int argc,char *argv[])
 #token ASIG         ":="
 #token TRUEKWD      "TRUE"
 #token FALSEKWD     "FALSE"
+#token STRING       " \" ~[\"]* \" "
 #token IDENT        "[a-zA-Z][a-zA-Z0-9]*"
 #token INTCONST     "[0-9]+"
 #token COMMENT      "//~[\n]*" << printf("%s",zzlextext); zzskip(); >>
@@ -257,25 +265,35 @@ int main(int argc,char *argv[])
 
 program: PROGRAM^ dec_vars l_dec_blocs l_instrs ENDPROGRAM! INPUTEND!;
 
+
 dec_vars: (VARS! l_dec_vars ENDVARS! | ) <<#0=createASTlist(_sibling);>>;
+l_dec_blocs: ( dec_bloc )* <<#0=createASTlist(_sibling);>> ;
+l_instrs: (instruction)* <<#0=createASTlist(_sibling);>>;
 
 l_dec_vars: (dec_var)* ;
-
 dec_var: IDENT^ constr_type;
 
-l_dec_blocs: ( dec_bloc )* <<#0=createASTlist(_sibling);>> ;
 
-dec_bloc: (PROCEDURE^ func_proc l_dec_blocs l_instrs ENDPROCEDURE | FUNCTION^ ENDFUNCTION);
+dec_bloc: (PROCEDURE^ dec_procedure procedure_instr ENDPROCEDURE!
+        | FUNCTION^ dec_function procedure_instr RETURN! expression ENDFUNCTION!);
 
+dec_function: IDENT^ dec_params RETURN! constr_type;
+dec_procedure: IDENT^ dec_params;
+procedure_instr: dec_vars l_dec_blocs l_instrs;
+
+dec_params: OPENPAR! l_dec_params CLOSEPAR! <<#0=createASTlist(_sibling);>>;
+l_dec_params: (dec_param (COMA! dec_param)*|);
+dec_param: (VAL^ | REF^) IDENT constr_type;
+
+call_params: (expression (COMA! expression)* | ) <<#0=createASTlist(_sibling);>>;
 constr_type: INT | BOOL | STRUCT^ (field)* ENDSTRUCT! | ARRAY^ OPENBRACK! INTCONST CLOSEBRACK! OF! constr_type;
-
 field: IDENT^ constr_type;
 
-l_instrs: (instruction)* <<#0=createASTlist(_sibling);>>;
 
 instruction:
         expr_id (ASIG^ expression| )
-      |	WRITELN^ OPENPAR! ( expression | STRING ) CLOSEPAR! 
+      |	(WRITE^ | WRITELN^) OPENPAR! ( expression | STRING ) CLOSEPAR!
+      | READ^ OPENPAR! IDENT CLOSEPAR!
       | IF^ expression THEN! l_instrs (ELSE! l_instrs| ) ENDIF! 
       | WHILE^ expression DO! l_instrs ENDWHILE! ;
 
@@ -293,13 +311,4 @@ exprsimple: expr_id
            | TRUEKWD | FALSEKWD 
            | (NOT^ | MINUS^) exprsimple;
         
-expr_id: IDENT ( 
-                  (OPENPAR! call_params CLOSEPAR!)  
-                  | ((DOT^ IDENT) | (OPENBRACK^ expression CLOSEBRACK!))* 
-               ) ;
-
-func_proc: IDENT OPENPAR! ( (definition_params)* ) CLOSEPAR!;
-
-definition_params: (VAL|REF) dec_var;
-
-call_params: (expression (COMA! expression)*| );
+expr_id: IDENT (OPENPAR^ call_params CLOSEPAR! | )((DOT^ IDENT) | (OPENBRACK^ expression CLOSEBRACK!))*;
