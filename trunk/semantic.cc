@@ -140,6 +140,11 @@ void insert_vars(AST *a)
   insert_vars(a->right); 
 }
 
+void construct_array(AST *a)
+{
+  //Pendent
+}
+
 void construct_struct(AST *a)
 {
   AST *a1=child(a,0);
@@ -179,6 +184,8 @@ void insert_headers(AST *a)
 
 void TypeCheck(AST *a,string info)
 {
+  /*Veure l'AST que es genera quan executem ./cl, per tal de tenir una idea
+   de quins fills te cada node.*/
   if (!a) {
     return;
   }
@@ -190,9 +197,8 @@ void TypeCheck(AST *a,string info)
     //insert_headers(child(child(a,1),0));
     //TypeCheck(child(a,1));
     TypeCheck(child(a,2),"instruction");
-
     symboltable.pop();
-  } 
+  }
   else if (a->kind=="list") {
     // At this point only instruction, procedures or parameters lists are possible.
     for (AST *a1=a->down;a1!=0;a1=a1->right) {
@@ -211,6 +217,41 @@ void TypeCheck(AST *a,string info)
   else if (a->kind=="struct") {
     construct_struct(a);
   }
+  //////////// 8<
+  else if (a->kind=="array"){
+    //Pendent
+    construct_array(a);
+  }
+
+  else if (a->kind=="["){
+    //Pendent
+    TypeCheck(child(a,0));
+    if (child(a,0)->tp->kind!="int")
+	errorincompatibleoperator(a->line,a->kind);
+  }
+  /////////// >8
+  else if (a->kind=="if"){
+    //Comprovem que la part que segueix a l'if sigui una expressió booleana
+    TypeCheck(child(a,0));
+    if (child(a,0)->tp->kind!="bool")
+	errorbooleanrequired(a->line,a->kind);
+
+    //Comprovem la segona part de l'if
+    TypeCheck(child(a,1),info);
+
+    //Si hi ha tercera part d'if (else), comprovar-ho també.
+    if (child(a,2)!=0)
+	TypeCheck(child(a,2),info);
+  }
+  
+  else if (a->kind=="while"){
+    TypeCheck(child(a,0));
+    if (child(a,0)->tp->kind!="bool")
+	errorbooleanrequired(a->line,a->kind);
+    //Continuem processant while
+    TypeCheck(child(a,1),info);
+  }
+
   else if (a->kind==":=") {
     TypeCheck(child(a,0));
     TypeCheck(child(a,1));
@@ -238,6 +279,49 @@ void TypeCheck(AST *a,string info)
     }
     a->tp=create_type("int",0,0);
   }
+  else if (a->kind=="-" && child(a,1)==0)
+    {
+      TypeCheck(child(a,0));
+      if ((child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="int"))
+	  errorincompatibleoperator(a->line,a->kind);
+      a->tp=create_type("int",0,0);	  
+    }
+  else if (a->kind=="true" || a->kind=="false") {
+    a->tp=create_type("bool",0,0);
+  }
+  else if (a->kind=="="){
+    TypeCheck(child(a,0));
+    TypeCheck(child(a,1));
+    if (child(a,0)->tp->kind!="error" && child(a,1)->tp->kind!="error"
+	&& !equivalent_types(child(a,0)->tp,child(a,1)->tp))
+      errorincompatibleoperator(a->line,a->kind);
+    a->tp=create_type("bool",0,0);
+  }
+  else if (a->kind=="or" || a->kind=="and"){
+    TypeCheck(child(a,0));
+    TypeCheck(child(a,1));
+    if ((child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="bool") ||
+	(child(a,1)->tp->kind!="error" && child(a,1)->tp->kind!="bool")) {
+      errorincompatibleoperator(a->line,a->kind);
+    }
+    a->tp=create_type("bool",0,0);
+  }
+  else if (a->kind=="not"){
+    TypeCheck(child(a,0));
+    if (child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="bool")
+      errorincompatibleoperator(a->line,a->kind);
+    a->tp=create_type("bool",0,0);
+  }
+  else if (a->kind=="<" || a->kind==">")
+    {
+      TypeCheck(child(a,0));
+    TypeCheck(child(a,1));
+    if ((child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="int") ||
+	(child(a,1)->tp->kind!="error" && child(a,1)->tp->kind!="int")) {
+      errorincompatibleoperator(a->line,a->kind);
+    }
+    a->tp=create_type("bool",0,0);
+    }
   else if (isbasickind(a->kind)) {
     a->tp=create_type(a->kind,0,0);
   }
