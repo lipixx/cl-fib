@@ -4,18 +4,14 @@
 #include <map>
 #include <list>
 #include <vector>
-
-
 using namespace std;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "ptype.hh"
 #include "symtab.hh"
-
 #include "myASTnode.hh"
-
 #include "semantic.hh"
+#include "util.hh"
 
 // feedback the main program with our error status
 int TypeError = 0;
@@ -125,11 +121,56 @@ bool isbasickind(string kind) {
   return kind=="int" || kind=="bool";
 }
 
-
+bool isvalidkind(string kind) {
+  return kind == "int" || kind == "bool" || kind == "array" || kind == "struct";
+}
 
 void check_params(AST *a,ptype tp,int line,int numparam)
 {
-  //...
+  int numCalledParams = 0;
+
+  /*child(a,1): _list
+    child(_list,0): primer paràmetre de la llista
+    Iterant amb els fills de _list podem obtenir el nombre de paràmetres que ens
+    han passat a la funció.
+   */
+  AST * a1 = child(child(a,1),0);
+  
+  for (; a1 != 0; a1 = a1->right) {
+    numCalledParams++;
+  }
+  
+  /*Llavors si el nº de paràmetres no coincideix amb la declaració, llançem error*/
+  if (numparam != numCalledParams)
+      errornumparam(a->line);
+  else
+    {
+      /*La llista de params. coincideix en nombre, però ara hem de comprovar cada paràmetre
+	si coincideix amb el lloc de la seva declaració.*/
+
+      //Actualment tp té el tipus del primer paràmetre de la declaració
+      int i = 1;
+
+      //Obtenim el primer paràmetre
+      a1 = child(child(a,1),0);
+
+      for (;a1 != 0; a1 = a1->right)
+	{
+	  //Comprovem el primer param.
+	  TypeCheck(a1);
+	  //El kind parref indica si és per ref. o per valor. (veure ptype.hh).
+	  if (tp->kind=="parref" && !a1->ref)
+	    errorreferenceableparam(a->line, i);
+	  
+	  //Si coincideix la declaració amb el que ens passen
+	  if (a1->tp->kind != "error" && !equivalent_types(a1->tp, tp->down))
+	    errorincompatibleparam(a->line, i);
+	  
+	  //Iterem pel següent.
+	  if (tp) tp = tp->right;
+	  i++;
+	}
+    }
 }
 
 void insert_vars(AST *a)
@@ -138,11 +179,6 @@ void insert_vars(AST *a)
   TypeCheck(child(a,0));
   InsertintoST(a->line,"idvarlocal",a->text,child(a,0)->tp);
   insert_vars(a->right); 
-}
-
-void construct_array(AST *a)
-{
-  //Pendent
 }
 
 void construct_struct(AST *a)
@@ -217,19 +253,80 @@ void TypeCheck(AST *a,string info)
   else if (a->kind=="struct") {
     construct_struct(a);
   }
-  //////////// 8<
   else if (a->kind=="array"){
-    //Pendent
-    construct_array(a);
+    a->tp=create_type("array",0,0);
+    TypeCheck(child(a,0));
+    TypeCheck(child(a,1));
+    
+    /*Comprovem els dos fills de l'array que són, fill 0: nºelements, i fill 1: tipus de
+      l'array*/
+    if (child(a,0)->tp->kind != "error" && child(a,1)->tp->kind != "error"
+	&& (child(a,0)->tp->kind!="int" && !isvalidkind(child(a,1)->tp->kind)))
+      {
+	errorincompatibleoperator(a->line,a->kind);
+      }
+    else /*Si tenim una definició bona d'array ens guardem la informació, veure ptype.hh*/
+      {
+	a->tp->numelemsarray = stringtoint(child(a,0)->text);
+	/*Guardem el tipus de l'array al down, per conveni*/
+	a->tp->down = child(a,1)->tp;
+      }
+  }  
+  else if (a->kind=="["){
+    /*Suposem x[expr].
+      En aquest cas hem de comprovar que la variable x és de tipus array. Un [ té com a fill
+      0 l'identificador, i com a fill dret una expressió que ha de resultar de tipus enter.*/
+    TypeCheck(child(a,0));
+    TypeCheck(child(a,1));
+
+    //Si el fill 0 (id. x) és una expressió per l'esquerra, "[" també..
+    a->ref = child(a,0)->ref;
+    
+    if (child(a,0)->tp->kind!="error")
+      {
+	if (child(a,0)->tp->kind!="array")
+	  errorincompatibleoperator(a->line,"array[]");
+	else
+	  //Els tipus d'un array els guardem a down per conveni. Veure ptype.hh.
+	  a->tp = child(a,0)->tp->down;
+      }
+
+    //Comprovem que l'expressió que vé despres de [ és un enter
+    if (child(a,1)->tp->kind!="int" && child(a,1)->tp->kind!="error")
+      errorincompatibleoperator(a->line,"[]");
+  }
+  else if (a->kind== "("){
+    /*Suposem x(expr):
+      En aquest cas x és l'identificador i és el fill 0 de (.
+      Expr no ens importa de quin tipus sigui i és el fill 1 de (.
+
+      Llavors podem tenir una funció o un procedure.
+
+      Suposem (x+10):
+      En aquest cas si ens fixem en l'arbre generat, els parèntesis són implicits i no apareixen.
+      Per tant no els hem de tractar i no se'ns pot donar el cas.
+    */
+    TypeCheck(child(a, 0));
+
+    if (child(a, 0)->tp->kind != "error")
+      {
+	if (child(a, 0)->tp->kind != "procedure" && info == "instruction")
+	  errorisnotprocedure(a->line);       
+	else 
+	  if (child(a, 0)->tp->kind != "function" && info != "instruction")	    
+	    errorisnotfunction(a->line);
+      }
+    
+    /*En cas de tenir un proc. o una func. hem de comprovar els paràmetres*/
+    if (child(a, 0)->tp->kind == "procedure" || child(a, 0)->tp->kind == "function")
+      //Revisar el pas de paràmetres a aquesta crida
+      check_params(a,child(a,0)->tp->down,a->line,child(a,0)->tp->size);     
+
+    /*Per conveni guardem el tipus de retorn de la funció a right (veure ptype.hh)*/
+    if (child(a, 0)->tp->kind == "function")
+      a->tp = child(a, 0)->tp->right;
   }
 
-  else if (a->kind=="["){
-    //Pendent
-    TypeCheck(child(a,0));
-    if (child(a,0)->tp->kind!="int")
-	errorincompatibleoperator(a->line,a->kind);
-  }
-  /////////// >8
   else if (a->kind=="if"){
     //Comprovem que la part que segueix a l'if sigui una expressió booleana
     TypeCheck(child(a,0));
@@ -269,6 +366,9 @@ void TypeCheck(AST *a,string info)
   else if (a->kind=="intconst") {
     a->tp=create_type("int",0,0);
   } 
+  else if (a->kind == "string") {
+    a->tp = create_type("string", 0, 0);
+  }
   else if (a->kind=="+" || (a->kind=="-" && child(a,1)!=0) || a->kind=="*"
 	   || a->kind=="/") {
     TypeCheck(child(a,0));
@@ -325,11 +425,26 @@ void TypeCheck(AST *a,string info)
   else if (isbasickind(a->kind)) {
     a->tp=create_type(a->kind,0,0);
   }
-  else if (a->kind=="writeln") {
+  else if (a->kind=="writeln" || a->kind=="write") {
     TypeCheck(child(a,0));
-    if (child(a,0)->tp->kind!="error" && !isbasickind(child(a,0)->tp->kind)) {
-      errorreadwriterequirebasic(a->line,a->kind);
-    }
+    if (child(a,0)->tp->kind!="error" && !isbasickind(child(a,0)->tp->kind)
+	&& child(a, 0)->tp->kind != "string")
+      {
+	errorreadwriterequirebasic(a->line,a->kind);
+      }
+  }
+  else if (a->kind == "read") {
+    /*Aquest cas és igual que el write, però si l'expressió que hi ha dins el write
+    no és un tipus simple (expressió per l'esquerra), llavors fallem.*/
+    TypeCheck(child(a, 0));
+    if (child(a, 0)->tp->kind != "error" && !child(a, 0)->ref)
+      errornonreferenceableexpression(a->line, a->kind);   
+    else
+      if (child(a, 0)->tp->kind != "error" && !isbasickind(child(a, 0)->tp->kind))
+	errorreadwriterequirebasic(a->line, a->kind);
+  }
+  else if (a->kind == "string"){
+    
   }
   else if (a->kind==".") {
     TypeCheck(child(a,0));
