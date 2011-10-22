@@ -24,7 +24,7 @@ typedef struct ttypenode {
   map<string,struct ttypenode *> struct_field;
   list<string> ids;
   // For the case of an array, we need the type of the
-  // elems of the arra (for example kept in "down"),
+  // elems of the array (for example kept in "down"),
   // and the number of elements (numelemsarray).
   int numelemsarray;
   // Used only during code generation:
