@@ -178,21 +178,7 @@ void check_params(AST *a,ptype tp,int line,int numparam)
     }
 }
 
-/*Func. cridada des del typecheck de Program, secció de declaració de variables*/
-void insert_vars(AST *a)
-{
-  /*Com veiem és una funció recursiva que en primera instància és cridada per TypeCheck(program),
-   amb input *a = l'arrel de la primera declaració.*/
-  if (!a) return; //Condició que fa que haguem acabat amb totes les declaracions de variables
-  /*Es comprova la var. actual*/
-  TypeCheck(child(a,0));
-  /*Es posa la variable a l'scope actual*/
-  InsertintoST(a->line,"idvarlocal",a->text,child(a,0)->tp);
-  /*Continua amb la següent variable (germà següent a l'arbre)*/
-  insert_vars(a->right); 
-}
-
-void construct_struct(AST *a)
+ void construct_struct(AST *a)
 {
   AST *a1=child(a,0);
   a->tp=create_type("struct",0,0);
@@ -208,26 +194,91 @@ void construct_struct(AST *a)
     a1=a1->right;
   }
 }
+/***********************************************/
+void insert_params(AST * a)
+{
+  if (!a)
+    return;
+  TypeCheck(child(a, 1));
+  if (a->kind == "val" || a->kind == "ref") {
+    InsertintoST(a->line, "idpar" + a->kind, child(a, 0)->text, child(a, 1)->tp);
+  }
+  insert_params(a->right);
+}
+
+void construct_procedure(AST * a)
+{
+  a->sc = symboltable.push();
+  insert_params(child(child(child(a,0),0),0));
+  insert_vars(child(child(a, 1), 0));
+  insert_headers(child(child(a, 2), 0));
+  TypeCheck(child(a, 2));
+  TypeCheck(child(a, 3), "instruction");
+  symboltable.pop();
+}
+
+void construct_function(AST * a)
+{
+  a->sc = symboltable.push();
+  insert_params(child(child(child(a,0),0),0));
+  insert_vars(child(child(a, 1), 0));
+  insert_headers(child(child(a, 2), 0));
+  TypeCheck(child(a, 2));
+  TypeCheck(child(a, 3), "instruction");
+  //Comprovem return
+  TypeCheck(child(a, 4));
+  if (child(a, 4)->tp->kind != "error" && a->tp->right->kind != "error" && !equivalent_types(child(a, 4)->tp, a->tp->right))
+    errorincompatiblereturn(child(a, 4)->line);
+  symboltable.pop();
+}
+/***********************************************/
+
+/*Func. cridada des del typecheck de Program, secció de declaració de variables*/
+void insert_vars(AST *a)
+{
+  /*Com veiem és una funció recursiva que en primera instància és cridada per TypeCheck(program),
+   amb input *a = l'arrel de la primera declaració.*/
+  if (!a) return; //Condició que fa que haguem acabat amb totes les declaracions de variables
+  /*Es comprova la var. actual*/
+  TypeCheck(child(a,0));
+  /*Es posa la variable a l'scope actual*/
+  InsertintoST(a->line,"idvarlocal",a->text,child(a,0)->tp);
+  /*Continua amb la següent variable (germà següent a l'arbre)*/
+  insert_vars(a->right); 
+}
 
 void create_params(AST * a, int &numParams)
 {
-  if (a)
+  /*Func recursiva que crea la llista de paràmetres i n'indica el nombre.
+    Següent paràmetre dins el right. Tipus del paràmetre al Down.
+  */
+  TypeCheck(child(a, 1));
+  numParams++;
+  if (a->right)
     {
-      TypeCheck(child(a, 1));
-      create_params(a->right, ++numParams);
-      if (a->right)
-	a->tp = create_type("par" + a->kind, child(a, 1)->tp, a->right->tp);//seguent parametre al right, tipus al down
-      else
-	a->tp = create_type("par" + a->kind, child(a, 1)->tp, 0);
+      create_params(a->right, numParams);
+      a->tp = create_type("par" + a->kind, child(a, 1)->tp, a->right->tp);
+    }
+  else
+    {
+      a->tp = create_type("par" + a->kind, child(a, 1)->tp, 0);
     }
 }
 
 
 void create_header(AST *a)
 {
+  /*a1: primer paràmetre de l'arbre de declaració paràmetres, ex. proc f(val p int):
+__procedure
+           \__ident(f)
+           |         \__list
+           |               \__val  <-----------a1
+           |                     \__ident(p)
+           |                     \__int
+  */
   AST *a1 = child(child(child(a, 0), 0), 0);
   int numParams = 0;
-  create_params(a1, numParams);
+  if (a1) create_params(a1, numParams);
  
  if (a->kind=="procedure") 
    {
@@ -239,6 +290,7 @@ void create_header(AST *a)
 
  else if (a->kind=="function")
    {
+     /*a2 és el retorn de la funció*/
      AST *a2 = child(child(a, 0), 1);
      TypeCheck(a2);
      
@@ -303,17 +355,35 @@ void TypeCheck(AST *a,string info)
     }
   } 
   else if (a->kind=="ident") {
-    if (!symboltable.find(a->text)) {
-      errornondeclaredident(a->line, a->text);
-    } 
-    else {
-      a->tp=symboltable[a->text].tp;
-      a->ref=1;
-    }
+    if (!symboltable.find(a->text))  
+      {
+	errornondeclaredident(a->line, a->text);
+      }
+    else
+      {
+	a->tp=symboltable[a->text].tp;	
+	/*Atenció, si és un símbol que fa referència a un proc.o func. no hi ha que fer-lo
+	 referenciable!!*/
+	if(a->tp->kind != "procedure" && a->tp->kind != "function") 
+	  a->ref=1;
+      }
   } 
   else if (a->kind=="struct") {
     construct_struct(a);
   }
+
+  /*A la "Secció de blocs" a la funció insert_headers s'han inserit primer les capçeleres 
+    dels procedures i de les funcions, però no s'ha iterat cap endins, sinó que s'ha fet
+    posteriorment amb el TypeCheck(child(a,1)). Per això aquí necessitem el següent:*/
+  else if (a->kind=="procedure")
+    {
+      construct_procedure(a);
+    }
+  else if (a->kind=="function")
+    {
+      construct_function(a);
+    }
+
   else if (a->kind=="array"){
     a->tp=create_type("array",0,0);
     TypeCheck(child(a,0));
