@@ -209,22 +209,64 @@ void construct_struct(AST *a)
   }
 }
 
+void create_params(AST * a, int &numParams)
+{
+  if (a)
+    {
+      TypeCheck(child(a, 1));
+      create_params(a->right, ++numParams);
+      if (a->right)
+	a->tp = create_type("par" + a->kind, child(a, 1)->tp, a->right->tp);//seguent parametre al right, tipus al down
+      else
+	a->tp = create_type("par" + a->kind, child(a, 1)->tp, 0);
+    }
+}
+
+
 void create_header(AST *a)
 {
-  //...
+  AST *a1 = child(child(child(a, 0), 0), 0);
+  int numParams = 0;
+  create_params(a1, numParams);
+ 
+ if (a->kind=="procedure") 
+   {
+     if (a1)
+       a->tp = create_type(a->kind, a1->tp, 0);
+     else
+       a->tp = create_type(a->kind, 0, 0);
+   }
+
+ else if (a->kind=="function")
+   {
+     AST *a2 = child(child(a, 0), 1);
+     TypeCheck(a2);
+     
+     if (a1)
+       a->tp = create_type(a->kind, a1->tp, a2->tp);
+     else
+       a->tp = create_type(a->kind, 0, a2->tp);
+   }
+
+ a->tp->size = numParams;
 }
 
 
 void insert_header(AST *a)
 {
-  //...
+  create_header(a);
+  if (a->kind=="procedure")
+    InsertintoST(a->line,"idproc",child(a,0)->text,a->tp);
+  else if (a->kind=="function")
+    InsertintoST(a->line,"idfunc",child(a,0)->text,a->tp);
 }
 
 void insert_headers(AST *a)
 {
+  /*Primera crida  a = primer __procedure o __function de __list*/
   while (a!=0) {
     insert_header(a);
-    a=a->right;
+    a=a->right; //Següent procedure o function
   }
 }
 
@@ -247,8 +289,8 @@ void TypeCheck(AST *a,string info)
     insert_vars(child(child(a,0),0));
 
     /*Secció de blocs*/
-    //insert_headers(child(child(a,1),0));
-    //TypeCheck(child(a,1));
+    insert_headers(child(child(a,1),0));
+    TypeCheck(child(a,1));
 
     /*Secció d'instruccions*/
     TypeCheck(child(a,2),"instruction");
