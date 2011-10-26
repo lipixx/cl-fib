@@ -77,6 +77,9 @@ scope *symtab::top()
   return current;
 }
 
+/*Retorna un enter que representa el grau
+de "anidamiento" d'un id. És a dir, a quants
+de scopes pertany.*/
 int symtab::jumped_scopes(string id)
 {
   scope *sc=current;

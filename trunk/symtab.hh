@@ -9,7 +9,9 @@ typedef struct {
 
 
 typedef struct sscope {
-  // The information associated to each identifier declared in this scope.
+  /* The information associated to each identifier declared in this scope.
+   *map<key,data> emmagatzema una llista d'elements identificats per key i que contenen data
+   *En aquest cas, m sería una llista de <identificador, (kind, tp)>.*/
   map<string,infosym> m;
   // For remember the order in which the ids where introduced.
   list<string> ids;
