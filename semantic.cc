@@ -107,6 +107,11 @@ static void InsertintoST(int line,string kind,string id,ptype tp)
 {
   infosym p;
 
+  /*Si el símbol està ja a la taula i a més trobem que està declarat a l'scope
+    actual, error: symbol ja declarat!!. Per anar bé, hauría d'estar, o no declarat (.find(id)=0)
+    o declarat a un altre scope que no sigui el nostre.
+    Si no hi ha error, el declarem a l'scope actual.
+  */
   if (symboltable.find(id) && symboltable.jumped_scopes(id)==0) errordeclaredident(line,id);
   else {
     symboltable.createsymbol(id);
@@ -173,11 +178,17 @@ void check_params(AST *a,ptype tp,int line,int numparam)
     }
 }
 
+/*Func. cridada des del typecheck de Program, secció de declaració de variables*/
 void insert_vars(AST *a)
 {
-  if (!a) return;
+  /*Com veiem és una funció recursiva que en primera instància és cridada per TypeCheck(program),
+   amb input *a = l'arrel de la primera declaració.*/
+  if (!a) return; //Condició que fa que haguem acabat amb totes les declaracions de variables
+  /*Es comprova la var. actual*/
   TypeCheck(child(a,0));
+  /*Es posa la variable a l'scope actual*/
   InsertintoST(a->line,"idvarlocal",a->text,child(a,0)->tp);
+  /*Continua amb la següent variable (germà següent a l'arbre)*/
   insert_vars(a->right); 
 }
 
@@ -217,21 +228,29 @@ void insert_headers(AST *a)
   }
 }
 
-
+/*info pot ser NULL*/
 void TypeCheck(AST *a,string info)
 {
   /*Veure l'AST que es genera quan executem ./cl, per tal de tenir una idea
    de quins fills te cada node.*/
+
   if (!a) {
     return;
   }
 
   //cout<<"Starting with node \""<<a->kind<<"\""<<endl;
   if (a->kind=="program") {
+    /*Creem un nou scope a la pila*/
     a->sc=symboltable.push();
+
+    /*Secció de variables*/
     insert_vars(child(child(a,0),0));
+
+    /*Secció de blocs*/
     //insert_headers(child(child(a,1),0));
     //TypeCheck(child(a,1));
+
+    /*Secció d'instruccions*/
     TypeCheck(child(a,2),"instruction");
     symboltable.pop();
   }
@@ -393,7 +412,8 @@ void TypeCheck(AST *a,string info)
     TypeCheck(child(a,0));
     TypeCheck(child(a,1));
     if (child(a,0)->tp->kind!="error" && child(a,1)->tp->kind!="error"
-	&& !equivalent_types(child(a,0)->tp,child(a,1)->tp))
+	&& !equivalent_types(child(a,0)->tp,child(a,1)->tp)
+	|| !isbasickind(child(a,0)->tp->kind) || !isbasickind(child(a,1)->tp->kind))
       errorincompatibleoperator(a->line,a->kind);
     a->tp=create_type("bool",0,0);
   }
