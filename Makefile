@@ -1,5 +1,5 @@
 CPPFLAGS += -I/usr/local/pccts-1.33/include -I/usr/include/pccts
-CXXFLAGS += -Wno-write-strings
+CXXFLAGS += -Wno-write-strings -g
 
 all: cl
 
