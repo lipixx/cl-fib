@@ -1,0 +1,20 @@
+Program
+  Vars
+    x Real
+    y Int
+    ar array[10] of Real
+    ai array[10] of Int
+  EndVars
+
+  Function P1(val m array[10] of Real) Return array[10] of Int
+    Return ai
+  EndFunction
+  Function P2(val m array[10] of Real) Return array[10] of Real
+    Return m
+  EndFunction
+  ai := |real| ar
+  ai := |int| ar
+  ai := P1(ai)
+  ai := |int| P2(|int| ar)
+  ar := |real| P1(|int| P2(ar))
+EndProgram

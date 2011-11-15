@@ -1,0 +1,12 @@
+Program
+  Vars
+    x Real
+    y Int
+  EndVars
+  x := Floor 3
+  y := Floor 3.14
+  x := Floor 3.14 + 2
+  y := 2.23 + Floor 3
+  x := Floor Floor 2.34
+  x := Floor ( Floor 2.34 )*34.23
+EndProgram

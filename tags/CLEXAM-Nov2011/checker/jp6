@@ -1,0 +1,18 @@
+Program
+  Vars
+    x Real
+    y Int
+    a Struct x Int y Int z Int EndStruct
+    b Struct x Int y Real z Real EndStruct
+    c Struct x Bool y Int EndStruct
+    d Struct x Real y Real EndStruct
+    e Struct x Int m array[2] of Real EndStruct
+  EndVars
+  
+  b := |real| a
+  a := |real| b
+  a := |int| b
+  d := |real| b
+  d := |real| c
+  d := |real| e 
+EndProgram

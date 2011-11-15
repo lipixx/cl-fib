@@ -1,0 +1,18 @@
+Program
+  Vars
+    x Int
+    y Real
+    a Struct x Int y Struct a Int z Int EndStruct EndStruct 
+    b Struct x Int y Struct a Real z Real EndStruct EndStruct 
+    c Struct x Real a Struct a Real z Struct m Real EndStruct EndStruct EndStruct 
+    d Struct x Real a Struct a Real z Struct m bool EndStruct EndStruct EndStruct 
+  EndVars
+  
+  a := |int| b
+  c := |real| a
+  x := (|int| b).y.a
+  y := |real| a.x
+  x := |int| floor (|real| a).x
+  x := |int| floor (|real| c).a.z.m
+  x := (|real| d).a.z.m
+EndProgram

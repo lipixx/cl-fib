@@ -1,0 +1,54 @@
+
+
+  1: Program
+  2:   Vars
+  3:     S ArrayLexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+ of Struct
+  4:                     X Int
+  5:                     A Array Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+ Of Int
+  6:                   EndStruct
+  7:     X Int
+  8:   EndVars
+  9:   Function F       Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+   
+ 10:     
+ 11:      Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+
+ 12:   
+ 13:       Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+  Lexical error: symbol ',' ignored!
+
+ 14:                 Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+    
+ 15:      Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+
+ 16:   
+ 17: 
+ 18:   Lexical error: symbol '-' ignored!
+
+ 19:   Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+
+ 20:   Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+Lexical error: symbol '[' ignored!
+Lexical error: symbol ']' ignored!
+
+ 21:   Lexical error: symbol ',' ignored!
+
+ 22:   
+ 23: 
+ 24: 
+There were lexical errors.
