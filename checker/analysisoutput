@@ -1,0 +1,21 @@
+
+
+  1: Program
+  2:   Vars
+  3:     x Int
+  4:     y Real
+  5:     a Struct x Int y Struct a Int z Int EndStruct EndStruct 
+  6:     b Struct x Int y Struct a Real z Real EndStruct EndStruct 
+  7:     c Struct x Real a Struct a Real z Struct m Real EndStruct EndStruct EndStruct 
+  8:     d Struct x Real a Struct a Real z Struct m bool EndStruct EndStruct EndStruct 
+  9:   EndVars
+ 10:   
+ 11:   a := |int| b
+ 12:   c := |real| a
+ 13:   x := (|int| b)
+ 14:      
+ 15:        
+ 16:        
+ 17:      
+ 18: 
+There were syntax errors.

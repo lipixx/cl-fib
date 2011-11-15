@@ -19,6 +19,16 @@ int TypeError = 0;
 
 /// ---------- Error reporting routines --------------
 
+void errorwrongcasting(int l){
+  TypeError = 1;
+  cout <<"L. "<<l<<": wrong casting."<< endl;
+}
+
+void errorfloor(int l) {
+  TypeError = 1;
+  cout <<"L. "<<l<<": wrong type for the floor function"<< endl;
+}
+
 void errornumparam(int l) {
   TypeError = 1;
   cout<<"L. "<<l<<": The number of parameters in the call do not match."<<endl;
@@ -123,11 +133,11 @@ static void InsertintoST(int line,string kind,string id,ptype tp)
 /// ------------------------------------------------------------
 
 bool isbasickind(string kind) {
-  return kind=="int" || kind=="bool";
+  return kind=="int" || kind=="bool" || kind=="real";
 }
 
 bool isvalidkind(string kind) {
-  return kind == "int" || kind == "bool" || kind == "array" || kind == "struct";
+  return kind == "int" || kind == "real" || kind == "bool" || kind == "array" || kind == "struct";
 }
 
 void check_params(AST *a,ptype tp,int line,int numparam)
@@ -497,6 +507,9 @@ void TypeCheck(AST *a,string info)
   else if (a->kind=="intconst") {
     a->tp=create_type("int",0,0);
   } 
+  else if (a->kind=="realconst"){
+    a->tp=create_type("real",0,0);
+  }
   else if (a->kind == "string") {
     a->tp = create_type("string", 0, 0);
   }
@@ -504,11 +517,17 @@ void TypeCheck(AST *a,string info)
 	   || a->kind=="/") {
     TypeCheck(child(a,0));
     TypeCheck(child(a,1));
+    
     if ((child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="int") ||
-	(child(a,1)->tp->kind!="error" && child(a,1)->tp->kind!="int")) {
-      errorincompatibleoperator(a->line,a->kind);
+	(child(a,1)->tp->kind!="error" && child(a,1)->tp->kind!="int")) {    
+      if (child(a,0)->tp->kind!="real" || child(a,1)->tp->kind!="real")
+	errorincompatibleoperator(a->line,a->kind);
     }
-    a->tp=create_type("int",0,0);
+
+    if (child(a,0)->tp->kind=="real" || child(a,1)->tp->kind=="real")
+      a->tp=create_type("real",0,0);
+    else
+      a->tp=create_type("int",0,0);
   }
   else if (a->kind=="-" && child(a,1)==0)
     {
@@ -544,6 +563,46 @@ void TypeCheck(AST *a,string info)
       errorincompatibleoperator(a->line,a->kind);
     a->tp=create_type("bool",0,0);
   }
+  else if (a->kind=="floor")
+    {
+      TypeCheck(child(a,0));
+      if (child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="real")
+	errorfloor(a->line);
+      a->tp=create_type("real",0,0);
+    }
+
+  else if (a->kind=="|real|")
+    {
+      TypeCheck(child(a,0));
+      if (child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="int"
+	  && child(a,0)->tp->kind!="array")
+	errorwrongcasting(a->line);
+      else
+	if (child(a,0)->tp->kind!="error" && child(a,0)->tp->kind=="array")
+	  {
+	    if (child(a,0)->tp->down->kind!="int")
+	      errorwrongcasting(a->line);
+	    child(a,0)->tp->down->kind="real";
+	  }
+      a->tp=create_type("real",0,0);
+    }
+  else if (a->kind=="|int|")
+    {
+      TypeCheck(child(a,0));
+      if (child(a,0)->tp->kind!="error" && child(a,0)->tp->kind!="real"
+	  && child(a,0)->tp->kind!="array")
+	errorwrongcasting(a->line);
+      else
+	if (child(a,0)->tp->kind!="error" && child(a,0)->tp->kind=="array")
+	  {
+	    if (child(a,0)->tp->down->kind!="real")
+	      errorwrongcasting(a->line);
+	    child(a,0)->tp->down->kind="int";
+	  }
+      a->tp=create_type("int",0,0);
+    }
+
+
   else if (a->kind=="<" || a->kind==">")
     {
       TypeCheck(child(a,0));
