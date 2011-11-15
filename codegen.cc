@@ -118,7 +118,7 @@ void CodeGenRealParams(AST *a,ptype tp,codechain &cpushparam,codechain &cremovep
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
 }
 
-// ...to be completed:
+// GenLeft és GenAddress...to be completed:
 codechain GenLeft(AST *a,int t)
 {
   codechain c;
@@ -144,7 +144,7 @@ codechain GenLeft(AST *a,int t)
 }
 
 
-// ...to be completed:
+// GenRight és GenValue...to be completed:
 codechain GenRight(AST *a,int t)
 {
   codechain c;
