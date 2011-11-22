@@ -182,6 +182,24 @@ codechain GenValue(AST *a,int t)
     {
       c=GenValue(child(a,0),t)|| GenValue(child(a,1),t+1)||
 	"addi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
+    }  
+  else if (a->kind=="-")
+    {
+      /*Operador unari canvi de signe*/
+      if (child(a,1) == 0) 
+	{
+	  c=GenValue(child(a,0),t)||"mini t"+itostring(t)+" t"+itostring(t);
+	}     
+      else /*Resta aritmètica*/	
+	{
+	  c=GenValue(child(a,0),t)|| GenValue(child(a,1),t+1)||
+	    "subi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
+	}
+    }
+  else if (a->kind=="/")
+    {
+      c=GenValue(child(a,0),t)|| GenValue(child(a,1),t+1)||
+	"divi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
     }
   
   else if (a->kind=="false")
@@ -192,7 +210,12 @@ codechain GenValue(AST *a,int t)
     {
       c="iload 1 t"+itostring(t);
     }
-  
+   
+  else if (a->kind=="<")
+    {
+      c="lesi t100 t100 t"+itostring(t);
+    }
+
   else 
     {
       cout<<"BIG PROBLEM! No case defined for kind "<<a->kind<<endl;
@@ -203,7 +226,10 @@ codechain GenValue(AST *a,int t)
 }
 
 /*
-*/
+ * Aquesta funció és la primera que es crida quan es va a tractar una nova
+ * instrucció de codi font d'alt nivell. Podríem dir que són els "pares" de
+ * l'AST que venen just després de Program.
+ */
 codechain CodeGenInstruction(AST *a,string info="")
 {
   codechain c;
@@ -247,14 +273,32 @@ codechain CodeGenInstruction(AST *a,string info="")
 	c=c||"wrln";
       }
     }
-  
-  /*Supos que haurem de tractar es cas aquest aquí, de si és funció o procedure cridat.
 
-    else if (a->kind="(")
-    {    
+  else if (a->kind=="while")
+    {
+      /*A completar*/
+      c="etiq while_ "
+	||GenValue(child(a,0),0)
+	||"fjmp t0 endwhile_"
+	||CodeGenInstruction(child(a,1),info)
+	||"etiq endwhile_";	
     }
 
-  */
+  else if (a->kind=="if")
+    {
+      /*A completar*/
+      c=GenValue(child(a,0),0)||"addi t200 t200 t200";
+    }
+
+    else if (a->kind=="(")
+    {    
+      /*A completar
+      c=GenValue(child(a,0),0)||"addi t300 t300 t300";
+      if (child(a,0)->text=="<")      
+      else if (child(a,0)->text==">")
+	c=c||"!=";
+	else if (child(a,0)->text=="!=")*/	
+    }
 
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
   
