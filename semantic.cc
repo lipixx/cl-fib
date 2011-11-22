@@ -197,8 +197,7 @@ void check_params(AST *a,ptype tp,int line,int numparam)
 /***********************************************/
 void insert_params(AST * a)
 {
-  if (!a)
-    return;
+  if (!a) return;
   TypeCheck(child(a, 1));
   if (a->kind == "val" || a->kind == "ref") {
     InsertintoST(a->line, "idpar" + a->kind, child(a, 0)->text, child(a, 1)->tp);
@@ -225,7 +224,7 @@ void construct_function(AST * a)
   insert_headers(child(child(a, 2), 0));
   TypeCheck(child(a, 2));
   TypeCheck(child(a, 3), "instruction");
-  //Comprovem return
+  /*Comprovem el retorn*/
   TypeCheck(child(a, 4));
   if (child(a, 4)->tp->kind != "error" && a->tp->right->kind != "error" && !equivalent_types(child(a, 4)->tp, a->tp->right))
     errorincompatiblereturn(child(a, 4)->line);

@@ -105,8 +105,8 @@ void gencodevariablesandsetsizes(scope *sc,codesubroutine &cs,bool isfunction=0)
   cs.parameters.push_back("static_link");
 }
 
-codechain GenLeft(AST *a,int t);
-codechain GenRight(AST *a,int t);
+codechain GenAddress(AST *a,int t);
+codechain GenValue(AST *a,int t);
 
 void CodeGenRealParams(AST *a,ptype tp,codechain &cpushparam,codechain &cremoveparam,int t)
 {
@@ -118,8 +118,8 @@ void CodeGenRealParams(AST *a,ptype tp,codechain &cpushparam,codechain &cremovep
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
 }
 
-// GenLeft és GenAddress...to be completed:
-codechain GenLeft(AST *a,int t)
+// GenAddress és GenAddress...to be completed:
+codechain GenAddress(AST *a,int t)
 {
   codechain c;
 
@@ -132,7 +132,7 @@ codechain GenLeft(AST *a,int t)
     c="aload _"+a->text+" t"+itostring(t);
   }
   else if (a->kind=="."){
-    c=GenLeft(child(a,0),t)||
+    c=GenAddress(child(a,0),t)||
       "addi t"+itostring(t)+" "+
       itostring(child(a,0)->tp->offset[child(a,1)->text])+" t"+itostring(t);
   }
@@ -144,8 +144,8 @@ codechain GenLeft(AST *a,int t)
 }
 
 
-// GenRight és GenValue...to be completed:
-codechain GenRight(AST *a,int t)
+// GenValue és GenValue...to be completed:
+codechain GenValue(AST *a,int t)
 {
   codechain c;
 
@@ -154,33 +154,56 @@ codechain GenRight(AST *a,int t)
   }
 
   //cout<<"Starting with node \""<<a->kind<<"\""<<endl;
-  if (a->ref) {
-    if (a->kind=="ident" && symboltable.jumped_scopes(a->text)==0 &&
-	isbasickind(symboltable[a->text].tp->kind) && symboltable[a->text].kind!="idparref") {
-	c="load _"+a->text+" t"+itostring(t);
+  if (a->ref)
+    {
+      if (a->kind=="ident" 
+	  && symboltable.jumped_scopes(a->text)==0
+	  && isbasickind(symboltable[a->text].tp->kind)
+	  && symboltable[a->text].kind!="idparref") 
+	{
+	  c="load _"+a->text+" t"+itostring(t);
+	}
+      else if (isbasickind(a->tp->kind))
+	{
+	  c=GenAddress(a,t)||"load t"+itostring(t)+" t"+itostring(t);
+	}
+      else 
+	{
+	  //...to be done
+	}    
+    } 
+
+  else if (a->kind=="intconst") 
+    {
+      c="iload "+a->text+" t"+itostring(t);
     }
-    else if (isbasickind(a->tp->kind)) {
-      c=GenLeft(a,t)||"load t"+itostring(t)+" t"+itostring(t);
+
+  else if (a->kind=="+")
+    {
+      c=GenValue(child(a,0),t)|| GenValue(child(a,1),t+1)||
+	"addi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
     }
-    else {//...to be done
-    }    
-  } 
-  else if (a->kind=="intconst") {
-    c="iload "+a->text+" t"+itostring(t);
-  }
-  else if (a->kind=="+") {
-    c=GenRight(child(a,0),t)||
-      GenRight(child(a,1),t+1)||
-      "addi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
-  }
-  else {
-    cout<<"BIG PROBLEM! No case defined for kind "<<a->kind<<endl;
-  }
+  
+  else if (a->kind=="false")
+    {
+      c="iload 0 t"+itostring(t);
+    }
+  else if (a->kind=="true")
+    {
+      c="iload 1 t"+itostring(t);
+    }
+  
+  else 
+    {
+      cout<<"BIG PROBLEM! No case defined for kind "<<a->kind<<endl;
+    }
+
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
   return c;
 }
 
-// ...to be completed:
+/*
+*/
 codechain CodeGenInstruction(AST *a,string info="")
 {
   codechain c;
@@ -190,36 +213,51 @@ codechain CodeGenInstruction(AST *a,string info="")
   }
   //cout<<"Starting with node \""<<a->kind<<"\""<<endl;
   offsetauxspace=0;
-  if (a->kind=="list") {
-    for (AST *a1=a->down;a1!=0;a1=a1->right) {
-      c=c||CodeGenInstruction(a1,info);
+
+  if (a->kind=="list")
+    {
+      for (AST *a1=a->down;a1!=0;a1=a1->right) {
+	c=c||CodeGenInstruction(a1,info);
+      }
     }
-  }
-  else if (a->kind==":=") {
-    if (isbasickind(child(a,0)->tp->kind)) {
-      c=GenLeft(child(a,0),0)||GenRight(child(a,1),1)||"stor t1 t0";
-    }
-    else if (child(a,1)->ref) {
-      c=GenLeft(child(a,0),0)||GenLeft(child(a,1),1)||"copy t1 t0 "+itostring(child(a,1)->tp->size);
-    }
-    else {
-      c=GenLeft(child(a,0),0)||GenRight(child(a,1),1)||"copy t1 t0 "+itostring(child(a,1)->tp->size);
-    }
-  } 
-  else if (a->kind=="write" || a->kind=="writeln") {
-    if (child(a,0)->kind=="string") {
-      //...to be done.
+
+  else if (a->kind==":=") 
+    {
+      if (isbasickind(child(a,0)->tp->kind)) {
+	c=GenAddress(child(a,0),0)||GenValue(child(a,1),1)||"stor t1 t0";
+      }
+      else if (child(a,1)->ref) {
+	c=GenAddress(child(a,0),0)||GenAddress(child(a,1),1)||"copy t1 t0 "+itostring(child(a,1)->tp->size);
+      }
+      else {
+	c=GenAddress(child(a,0),0)||GenValue(child(a,1),1)||"copy t1 t0 "+itostring(child(a,1)->tp->size);
+      }
     } 
-    else {//Exp
-      c=GenRight(child(a,0),0)||"wrii t0";
+
+  else if (a->kind=="write" || a->kind=="writeln") 
+    {
+      if (child(a,0)->kind=="string") {
+	c=c||"wris "+child(a,1)->text;
+      } 
+      else {//Exp
+	c=GenValue(child(a,0),0)||"wrii t0";
+      }
+      
+      if (a->kind=="writeln") {
+	c=c||"wrln";
+      }
+    }
+  
+  /*Supos que haurem de tractar es cas aquest aquí, de si és funció o procedure cridat.
+
+    else if (a->kind="(")
+    {    
     }
 
-    if (a->kind=="writeln") {
-      c=c||"wrln";
-    }
-  }
+  */
+
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
-
+  
   return c;
 }
 
