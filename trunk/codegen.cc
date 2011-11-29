@@ -301,7 +301,7 @@ codechain CodeGenInstruction(AST *a,string info="")
   else if (a->kind=="write" || a->kind=="writeln") 
     {
       if (child(a,0)->kind=="string") {
-	c=c||"wris "+child(a,1)->text;
+	//wris
       } 
       else {
 	c=GenValue(child(a,0),0)||"wrii t0";
