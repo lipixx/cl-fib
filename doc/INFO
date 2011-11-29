@@ -1,0 +1,87 @@
+Per fer més eficient la prova de casos, executar la següent línia:
+function test { ./cl < jp$1 | diff sjp$1 -; }
+
+
+Llavors cridar la funció test des de bash així:
+test <numjocproves>
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// List of fields in a AST node.
+
+//  kind: the kind of token.
+//  text: the string of the token. 
+//  line: line in the program where the token appeared.
+//  scope: The scope for the case where the AST tree corresponds 
+//  to a function, a procedure, or the main program.  
+//  ptype: The type of the expression (if appliable). 
+//  ref: Whether the expression is a left-expression.
+//  *right: Següent germà (next sibling)
+//  *left: Anterior germà (last sibling) (NO USAT A CL)
+//  *down: Primer fill
+//  *up: Pare (hi pot haver nodes sense pare¿?) (NO USAT A CL)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ptype tp (tipus del NODE de l'AST)
+{
+string kind : "int", "bool","array", "struct", 
+              "function","procedure", "*parref", "*parval".
+
+struct tp *down; //A tp->kind=function. 
+                 //i a tp->kind=procedure, aqui guardem
+                 //parref o parval. P.ex. tp->down->kind=parref.
+struct tp *right; //A tp->kind=function, aquí guardem
+                  //el tipus de retorn. P.ex. tp->right->kind=int
+
+/*Structs*/
+// For fields of structs, we have the type of each field
+// (struct_field), but also, since the map does not
+// remember the insertion order, we also have the
+// list keeping such an order (ids).
+map<string,tp> struct_field;
+list<string> ids;
+
+/*Arrays*/
+// For the case of an array, we need the type of the
+// elems of the array (for example kept in "down"),
+// and the number of elements (numelemsarray).
+int numelemsarray;
+
+/*Codegen*/
+// Used only during code generation:
+int size; // The size of the type.
+map<string,int> offset; // For fields of structs.
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+void errornumparam(int l) {
+void errorincompatibleparam(int l,int n) {
+void errorreferenceableparam(int l,int n) {
+void errordeclaredident(int l, string s) {
+void errornondeclaredident(int l, string s) {
+void errornonreferenceableleft(int l, string s) {
+void errorincompatibleassignment(int l) {
+void errorbooleanrequired(int l,string s) {
+void errorisnotprocedure(int l) {
+void errorisnotfunction(int l) {
+void errorincompatibleoperator(int l, string s) {
+void errorincompatiblereturn(int l) {
+void errorreadwriterequirebasic(int l, string s) {
+void errornonreferenceableexpression(int l, string s) {
+void errornonfielddefined(int l, string s) {
+void errorfielddefined(int l, string s) {
+
+
+static void InsertintoST(int line,string kind,string id,ptype tp)
+bool isbasickind(string kind)
+bool isvalidkind(string kind)
+
+//A comprovar
+void check_params(AST *a,ptype tp,int line,int numparam)
+
+void insert_vars(AST *a)
+void construct_struct(AST *a)
+void create_header(AST *a)
+void insert_header(AST *a)
+void insert_headers(AST *a)
+void TypeCheck(AST *a,string info)
+
+
