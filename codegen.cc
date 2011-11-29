@@ -136,6 +136,15 @@ codechain GenAddress(AST *a,int t)
       "addi t"+itostring(t)+" "+
       itostring(child(a,0)->tp->offset[child(a,1)->text])+" t"+itostring(t);
   }
+
+  else if (a->kind=="[")
+    {
+      c = GenAddress(child(a,0),0)
+	|| GenValue(child(a,1),1)
+	|| "muli t1 "+itostring(a->tp->size)+" t1"
+	|| "addi t0 t1 t0";
+    }
+
   else {
     cout<<"BIG PROBLEM! No case defined for kind "<<a->kind<<endl;
   }
@@ -163,16 +172,20 @@ codechain GenValue(AST *a,int t)
 	{
 	  c="load _"+a->text+" t"+itostring(t);
 	}
+
       else if (isbasickind(a->tp->kind))
 	{
 	  c=GenAddress(a,t)||"load t"+itostring(t)+" t"+itostring(t);
 	}
-      else 
+  
+      else if (a->kind=="[")
 	{
-	  //...to be done
-	}    
+	  c = GenAddress(a,0)
+	    || "iload t0 t0";
+	}
+      
     } 
-
+  
   else if (a->kind=="intconst") 
     {
       c="iload "+a->text+" t"+itostring(t);
@@ -200,8 +213,13 @@ codechain GenValue(AST *a,int t)
     {
       c=GenValue(child(a,0),t)|| GenValue(child(a,1),t+1)||
 	"divi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
+    }  
+  else if (a->kind=="*")
+    {
+      c=GenValue(child(a,0),t)|| GenValue(child(a,1),t+1)||
+	"muli t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
     }
-  
+
   else if (a->kind=="false")
     {
       c="iload 0 t"+itostring(t);
@@ -213,7 +231,27 @@ codechain GenValue(AST *a,int t)
    
   else if (a->kind=="<")
     {
-      c="lesi t100 t100 t"+itostring(t);
+      c=GenValue(child(a,0),t) 
+	|| GenValue(child(a,1),t+1)
+	|| "lesi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
+    }
+  else if (a->kind==">")
+    {
+      c=GenValue(child(a,0),t) 
+	|| GenValue(child(a,1),t+1)
+	|| "grti t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
+    }
+  else if (a->kind=="=")
+    {
+      c=GenValue(child(a,0),t) 
+	|| GenValue(child(a,1),t+1)
+	|| "equi t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
+    }
+  else if (a->kind=="and")
+    {
+      c=GenValue(child(a,0),t) 
+	|| GenValue(child(a,1),t+1)
+	|| "land t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
     }
 
   else 
@@ -265,7 +303,7 @@ codechain CodeGenInstruction(AST *a,string info="")
       if (child(a,0)->kind=="string") {
 	c=c||"wris "+child(a,1)->text;
       } 
-      else {//Exp
+      else {
 	c=GenValue(child(a,0),0)||"wrii t0";
       }
       
@@ -276,18 +314,38 @@ codechain CodeGenInstruction(AST *a,string info="")
 
   else if (a->kind=="while")
     {
-      /*A completar*/
-      c="etiq while_ "
+      int label=newLabelWhile();
+      
+      c="etiq while_"+itostring(label)
 	||GenValue(child(a,0),0)
-	||"fjmp t0 endwhile_"
+	||"fjmp t0 endwhile_"+itostring(label)
 	||CodeGenInstruction(child(a,1),info)
-	||"etiq endwhile_";	
+	||"ujmp while_"+itostring(label)
+	||"etiq endwhile_"+itostring(label);
     }
 
   else if (a->kind=="if")
     {
-      /*A completar*/
-      c=GenValue(child(a,0),0)||"addi t200 t200 t200";
+      int label = newLabelIf();
+
+      /*En cas de voler etiqueta inici de if, afegir: "etiq if_"+itostring(label)"*/
+      c=GenValue(child(a,0),0);
+	
+      /*Si no hi ha else*/
+      if (!child(a,2)) 
+	{
+	  c = c||"fjmp t0 endif_"+itostring(label)
+	    ||CodeGenInstruction(child(a,1),info);
+	}
+      else
+	{
+	  c = c||"fjmp t0 else_"+itostring(label)
+	    ||CodeGenInstruction(child(a,1),info)
+	    ||"ujmp endif_"+itostring(label)
+	    ||"etiq else_"+itostring(label)
+	    ||CodeGenInstruction(child(a,2),info);
+	}
+      c = c||"etiq endif_"+itostring(label);	
     }
 
     else if (a->kind=="(")
@@ -299,7 +357,6 @@ codechain CodeGenInstruction(AST *a,string info="")
 	c=c||"!=";
 	else if (child(a,0)->text=="!=")*/	
     }
-
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
   
   return c;
