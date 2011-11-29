@@ -349,7 +349,10 @@ codechain CodeGenInstruction(AST *a,string info="")
     }
 
     else if (a->kind=="(")
-    {    
+    { 
+      //child(a,0)->tp->kind ens diu si és "procedure" o "function".
+      //child(a,0)->tp->down és la llista de paràmetres, amb kind parref i parval.
+      //Els paràmetres son també de tipus ttypenode (ptype.hh).
       /*A completar
       c=GenValue(child(a,0),0)||"addi t300 t300 t300";
       if (child(a,0)->text=="<")      
