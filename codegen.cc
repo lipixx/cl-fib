@@ -353,13 +353,33 @@ codechain CodeGenInstruction(AST *a,string info="")
       //child(a,0)->tp->kind ens diu si és "procedure" o "function".
       //child(a,0)->tp->down és la llista de paràmetres, amb kind parref i parval.
       //Els paràmetres son també de tipus ttypenode (ptype.hh).
-      /*A completar
-      c=GenValue(child(a,0),0)||"addi t300 t300 t300";
-      if (child(a,0)->text=="<")      
-      else if (child(a,0)->text==">")
-	c=c||"!=";
-	else if (child(a,0)->text=="!=")*/	
-    }
+
+      #if 0
+      /*Generem tots els paràmetres*/
+      ttypenode * parametre = child(a,0)->tp->down;
+
+      while (parametre != NULL)
+	{
+	  c=c||GenValue(parametre,0)
+	    ||"pushparam t0";	  
+	  parametre = parametre->down;
+	}
+      c = c||"aload static_link t0"
+	||"pushparam t0";
+
+      /*Fem la crida*/
+      c = c||"call program_"+child(a,0)->text
+	||CodeGenSubroutine(child(a,0),child(a,1));
+      
+      /*Eliminem tots els paràmetres*/
+      parametre = child(a,0)->tp->down;
+      while (parametre != NULL)
+	{
+	  c = c||"killparam";
+	}      
+      #endif  
+  }
+  
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
   
   return c;
