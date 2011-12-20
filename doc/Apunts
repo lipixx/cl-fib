@@ -24,3 +24,8 @@ x:=3+5    write x+1
 No és el mateix que:
 
 program:(ID ASIG^ expr | WRITE^ expr)*;
+
+
+
+#Test de jocs de proves:
+function test() { ./cl < jp | diff sjp -; }

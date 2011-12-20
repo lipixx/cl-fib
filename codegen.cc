@@ -62,6 +62,7 @@ codechain indirections(int jumped_scopes,int t)
   return c;
 }
 
+/*Retorna la mida d'un tipus, ja sigui basic, elements de l'array, o mida total de l'struct*/
 int compute_size(ptype tp)
 {
   if (isbasickind(tp->kind)) {
@@ -108,39 +109,58 @@ void gencodevariablesandsetsizes(scope *sc,codesubroutine &cs,bool isfunction=0)
 codechain GenAddress(AST *a,int t); //Was GenLeft
 codechain GenValue(AST *a,int t);   //Was GenRight
 
+/*Funció cridada quan generem els paràmetres d'una funció o procedure*/
 void CodeGenRealParams(AST *a,ptype tp,codechain &cpushparam,codechain &cremoveparam,int t)
 {
   if (!a) return;
   //cout<<"Starting with node \""<<a->kind<<"\""<<endl;
 
-  //////////////////////////////////////////////////////////////////
-	for (AST * a1 = a; a1 != 0; a1 = a1->right) {
-	  if (tp->kind=="parref") {
-			cpushparam=cpushparam||GenAddress(a1,t);
-	  } else {  //parval
-			if (a->ref) {
-				if (isbasickind(a->tp->kind)) {
-					cpushparam=cpushparam||GenValue(a1,t);
-				} else {
-					cpushparam = cpushparam||GenAddress(a1,t+1)||"aload aux_space t" + itostring(t)
-					||"addi t" + itostring(t) + " " + itostring(offsetauxspace) + " t" + itostring(t)
-					||"copy t"+ itostring(t+1) + " t" + itostring(t) +  " " + itostring(a->tp->size);
-
-					offsetauxspace = offsetauxspace + a->tp->size;
-					if (offsetauxspace > maxoffsetauxspace) maxoffsetauxspace = offsetauxspace;
-				}
-			}else {
-				cpushparam=cpushparam||GenValue(a1,t);
-			}
-	  }
-	  cpushparam = cpushparam||"pushparam t" + itostring(t);
-	  cremoveparam = cremoveparam||"killparam";
-	  
-	  if (tp) tp = tp->right;
+  /*Generar tots els paràmetres, deixar el resultat dins cpushparam i cremoveparam, ja s'imprimirà des de
+   un altre lloc*/
+  for (AST * a1 = a; a1 != 0; a1 = a1->right)
+    {
+      /*Paràmetre per referència*/
+      if (tp->kind=="parref")
+	{
+	  cpushparam=cpushparam
+	    ||GenAddress(a1,t);
+	} 
+      else 
+	{  /*El paràmetre és per valor*/
+	  if (a->ref)/*i és referenciable*/
+	    {
+	      if (isbasickind(a->tp->kind))
+		{
+		  cpushparam=cpushparam
+		    ||GenValue(a1,t);
+		}
+	      else 
+		{
+		  /*Si no és tipus bàsic, hem de fer una còpia*/
+		  cpushparam = cpushparam
+		    ||GenAddress(a1,t+1)
+		    ||"aload aux_space t" + itostring(t)					
+		    ||"addi t"+itostring(t)+" "+itostring(offsetauxspace)+" t"+itostring(t)
+		    ||"copy t"+ itostring(t+1) + " t" + itostring(t) +  " " + itostring(a->tp->size);
+		  
+		  offsetauxspace = offsetauxspace + a->tp->size;
+		  if (offsetauxspace > maxoffsetauxspace) maxoffsetauxspace = offsetauxspace;
+		}
+	    }
+	  else /*i no és referenciable*/
+	    {
+	      cpushparam=cpushparam
+		||GenValue(a1,t);
+	    }
 	}
-	/////////////////////////////////////////////////////////////////
-  //...to be done.
-
+      cpushparam = cpushparam
+	||"pushparam t" + itostring(t);
+      cremoveparam = cremoveparam
+	||"killparam";
+      
+      if (tp) /*Continuem amb el següent*/
+	tp = tp->right;
+    }
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
 }
 
@@ -335,79 +355,67 @@ codechain GenValue(AST *a,int t)
       //child(a,0)->tp->down és la llista de paràmetres, amb kind parref i parval.
       //Els paràmetres son també de tipus ttypenode (ptype.hh).
       
-      
-      //////////////////////////////////////////////////////////////////////////////////
       codechain cpushparam,cremoveparam;
-      
-      //Si es una funcio, parametre return	
       bool function=false;
+
+      /*En cas de que hi hagi retorn*/
       if (child(a, 0)->tp->right) {
+
+	function = true;
+
+	/*Si el retorn es tipus bàsic, basta fer un push d'un enter per reservar l'espai*/
 	if (isbasickind(child(a, 0)->tp->right->kind)) {
 	  cpushparam = cpushparam||"pushparam 0";
 	}
-	else {
-	  cpushparam = cpushparam||"aload aux_space t" + itostring(t)
-	    ||"addi t" + itostring(t) + " " + itostring(offsetauxspace) + " t" + itostring(t)
-	    ||"pushparam t" + itostring(t);
-	  
-	  //Perque al temporal t tenim guardat aux_space
-	  t++;
-	  //Actualitzem espai usat auxspace
-	  offsetauxspace = offsetauxspace + child(a, 0)->tp->right->size;
-	  if (offsetauxspace > maxoffsetauxspace) maxoffsetauxspace = offsetauxspace;
-	  
+	/*Si no és bàsic carreguem l'aux_space, sumem a aux_space l'offset actual, i fem un push del paràmetre.
+	 *Llavors haurem d'incrementar l'offsetauxspace segons la mida del retorn (tp->right->size).
+	 *maxoffsetauxspace ens serveix per saber el total utilitzat.
+	 */
+	else
+	  {
+	    cpushparam = cpushparam
+	      ||"aload aux_space t" + itostring(t)
+	      ||"addi t" + itostring(t) + " " + itostring(offsetauxspace) + " t" + itostring(t)
+	      ||"pushparam t" + itostring(t);
+	    
+	    /*Al temporal t tenim guardat aux_space, per tant no el volem sobreescriure:*/
+	    t++;
+
+	    offsetauxspace = offsetauxspace + child(a, 0)->tp->right->size;
+	    if (offsetauxspace > maxoffsetauxspace) maxoffsetauxspace = offsetauxspace;	  
 	}
-	
-	function = true;
       }
       
-      //parametres:Node AST del primer parametre i ptype de la funcio
+      /*Generem els paràmetres: Node AST del primer parametre i ptype de la funcio*/
       CodeGenRealParams(child(child(a, 1), 0), child(a, 0)->tp->down, cpushparam, cremoveparam,t);
       
-      //Static link
-      cpushparam = cpushparam||indirections(symboltable.jumped_scopes(child(a,0)->text),t)
+      /*Carreguem l'Static link*/
+      cpushparam = cpushparam
+	||indirections(symboltable.jumped_scopes(child(a,0)->text),t)
 	||"pushparam t" + itostring(t);
-      cremoveparam = cremoveparam||"killparam";
       
-      //Hem de recuperar el valor retornat
+      cremoveparam = cremoveparam
+	||"killparam";
+      
+      /*Recuperem el retorn de la funció*/
       if (function) {
 	if (isbasickind(child(a, 0)->tp->right->kind)) {
-	  cremoveparam = cremoveparam||"popparam t" + itostring(t);
-	}else {
-	  t--;
-	  cremoveparam = cremoveparam||"killparam";
+	  cremoveparam = cremoveparam
+	    ||"popparam t" + itostring(t);
 	}
+	else
+	  {
+	    t--;
+	    cremoveparam = cremoveparam
+	      ||"killparam";
+	  }
       }
       
-      c=cpushparam||"call " + symboltable.idtable(child(a,0)->text) + "_" + child(a,0)->text||cremoveparam;
-      ///////////////////////////////////////////////////////////////////////
-      
-    #if 0
-      /*Generem tots els paràmetres*/
-      ttypenode * parametre = child(a,0)->tp->down;
-      
-      while (parametre != NULL)
-	{
-	  c=c||GenValue(parametre,0)
-	    ||"pushparam t0";	  
-	  parametre = parametre->down;
-	}
-      c = c||"aload static_link t0"
-	||"pushparam t0";
-      
-      /*Fem la crida*/
-      c = c||"call program_"+child(a,0)->text
-	||CodeGenSubroutine(child(a,0),child(a,1));
-      
-      /*Eliminem tots els paràmetres*/
-      parametre = child(a,0)->tp->down;
-      while (parametre != NULL)
-	{
-	  c = c||"killparam";
-	}      
-#endif  
+      /*Cridem a la funció fent els pushparam, després el call, i finalment el killparam i recull de resultats*/
+      c=cpushparam
+	||"call "+symboltable.idtable(child(a,0)->text)+"_"+child(a,0)->text
+	||cremoveparam;      
     }
-  
   
   else 
     {
@@ -521,44 +529,58 @@ void CodeGenSubroutine(AST *a,list<codesubroutine> &l)
   symboltable.push(a->sc);
   symboltable.setidtable(idtable+"_"+child(a,0)->text);
 
-  ///////////////////////////////////////////
-  gencodevariablesandsetsizes(a->sc,cs, a->kind=="function");
+  /*Crea el troç de codi de definició variables.*/
+  gencodevariablesandsetsizes(a->sc,cs,a->kind=="function");
 
+  /*Subrutines encastades*/
   for (AST *a1=child(child(a,2),0);a1!=0;a1=a1->right) {
     CodeGenSubroutine(a1,l);
   }
-  maxoffsetauxspace=0; newLabelIf(true); newLabelWhile(true);
+  maxoffsetauxspace=0; 
+  newLabelIf(true); 
+  newLabelWhile(true);
   cs.c=CodeGenInstruction(child(a,3));
   
-	//Si es un funcio s'ha de retornar el valor
-	if (child(a,4)) {
-		if (isbasickind(child(a,4)->tp->kind)) {
-			cs.c = cs.c||GenValue(child(a,4),0)||"stor t0 returnvalue";
-		} else {
-			if (child(a,4)->ref) {
-				cs.c = cs.c||GenAddress(child(a,4),1)||"load returnvalue t0"
-				||"copy t1 t0 " + itostring(child(a,4)->tp->size);
-			} else {
-				cs.c = cs.c||GenValue(child(a,4),1)||"load returnvalue t0"
-				||"copy t1 t0 " + itostring(child(a,4)->tp->size);
-			}
-		}
+  /*Si és un funcio s'ha de retornar el valor*/
+  if (child(a,4))
+    {
+      if (isbasickind(child(a,4)->tp->kind))
+	{
+	  cs.c = cs.c
+	    ||GenValue(child(a,4),0)
+	    ||"stor t0 returnvalue";
+	} 
+      else
+	{
+	  if (child(a,4)->ref)
+	    {
+	      cs.c = cs.c
+		||GenAddress(child(a,4),1)
+		||"load returnvalue t0"
+		||"copy t1 t0 "+itostring(child(a,4)->tp->size);
+	    }
+	  else
+	    {
+	    cs.c = cs.c
+	      ||GenValue(child(a,4),1)
+	      ||"load returnvalue t0"
+	      ||"copy t1 t0 " + itostring(child(a,4)->tp->size);
+	    }
 	}
-
-	cs.c = cs.c||"retu";
-
-	if (maxoffsetauxspace>0) {
-    variable_data vd;
-    vd.name="aux_space";
-    vd.size=maxoffsetauxspace;
-    cs.localvariables.push_back(vd);
-  }
-  ///////////////////////////////////////////
-
+    }
+  cs.c = cs.c
+    ||"retu";
+  
+  if (maxoffsetauxspace>0)
+    {
+      variable_data vd;
+      vd.name="aux_space";
+      vd.size=maxoffsetauxspace;
+      cs.localvariables.push_back(vd);
+    }
   symboltable.pop();
   l.push_back(cs);
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
-
 }
 
 void CodeGen(AST *a,codeglobal &cg)
