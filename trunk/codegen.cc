@@ -105,8 +105,8 @@ void gencodevariablesandsetsizes(scope *sc,codesubroutine &cs,bool isfunction=0)
   cs.parameters.push_back("static_link");
 }
 
-codechain GenAddress(AST *a,int t);
-codechain GenValue(AST *a,int t);
+codechain GenAddress(AST *a,int t); //Was GenLeft
+codechain GenValue(AST *a,int t);   //Was GenRight
 
 void CodeGenRealParams(AST *a,ptype tp,codechain &cpushparam,codechain &cremoveparam,int t)
 {
@@ -144,7 +144,7 @@ void CodeGenRealParams(AST *a,ptype tp,codechain &cpushparam,codechain &cremovep
   //cout<<"Ending with node \""<<a->kind<<"\""<<endl;
 }
 
-// GenAddress és GenAddress...to be completed:
+
 codechain GenAddress(AST *a,int t)
 {
   codechain c;
@@ -153,56 +153,56 @@ codechain GenAddress(AST *a,int t)
     return c;
   }
 
-  ////////////////////////////////////////////////////////////////////
+  /*Si generem l'adreça d'un identificador, i es troba  a l'scope actual*/
   if (a->kind=="ident" && symboltable.jumped_scopes(a->text)==0) {
-		if ((symboltable[a->text].kind=="idparref") || (symboltable[a->text].kind=="idparval" && !isbasickind(a->tp->kind))) {
-			c="load _"+a->text+" t"+itostring(t);
-		}		
-		else {
-			c="aload _"+a->text+" t"+itostring(t);
-		}
-
-  } else if(a->kind=="ident" && symboltable.jumped_scopes(a->text)!=0) {
-		c=indirections(symboltable.jumped_scopes(a->text),t)
-		||"addi t" + itostring(t) + " offset(" + symboltable.idtable(a->text) + ":_" + a->text + ") t" + itostring(t);
-	
-		//Si es parref per a carregar l'adreça em de carregar el valor del parametre
-		if (symboltable[a->text].kind=="idparref") {
-			c=c||"load t"+itostring(t)+" t"+itostring(t);
-		}
-  } else if (a->kind=="."){
-    c=GenAddress(child(a,0),t)||
-    "addi t"+itostring(t)+" "+
-    itostring(child(a,0)->tp->offset[child(a,1)->text])+" t"+itostring(t);
-  }
-	else if (a->kind=="[") {
-	  c=GenAddress(child(a,0),t)||GenValue(child(a,1),t+1)||"muli t"+itostring(t+1) + " " + itostring(a->tp->size) + " t" + itostring(t+1)||"addi t"+ itostring(t) + " t" + itostring(t+1) + " t" + itostring(t);
-  }
-
-
-  ////////////////////////////////////////////////////////////////////
-
-
-#if 0
-  //cout<<"Starting with node \""<<a->kind<<"\""<<endl;
-  if (a->kind=="ident") {
-    c="aload _"+a->text+" t"+itostring(t);
-  }
-  else if (a->kind=="."){
-    c=GenAddress(child(a,0),t)||
-      "addi t"+itostring(t)+" "+
-      itostring(child(a,0)->tp->offset[child(a,1)->text])+" t"+itostring(t);
-  }
-
-  else if (a->kind=="[")
-    {
-      c = GenAddress(child(a,0),0)
-	|| GenValue(child(a,1),1)
-	|| "muli t1 "+itostring(a->tp->size)+" t1"
-	|| "addi t0 t1 t0";
+    /*En cas que el paràmetre sigui d'una funció o procedure, i sigui per referència o per (valor i no tipus basic),
+     *Per ex:  function p(Array * a, Struct s)
+     *Ja tenim l'adreça que apunta a l'objecte dins l'identificador, per tant amb un load ens basta.
+    */
+    if ((symboltable[a->text].kind=="idparref") || (symboltable[a->text].kind=="idparval" && !isbasickind(a->tp->kind)) ) {
+      c="load _"+a->text+" t"+itostring(t);
     }
-#endif 
+    /*En el cas normal, hem de carregar l'adreça de l'objecte*/
+    else {
+      c="aload _"+a->text+" t"+itostring(t);
+    }
+    
+    /*Si l'identificador està a fora del nostre scope, hem de calcular les indireccions,
+     *afegir l'offset de la variable a l'adreça calculada (que apunta al bloc on està la variable)
+     *i finalment, si la variable és un punter hem de carregar el contingut, ja que sinó tindríem un punter a punter.
+     */
+  } else if(a->kind=="ident" && symboltable.jumped_scopes(a->text)!=0) {
+    c=indirections(symboltable.jumped_scopes(a->text),t)
+      ||"addi t" + itostring(t) + " offset(" + symboltable.idtable(a->text) + ":_" + a->text + ") t" + itostring(t);
+    
+    /*Si es parref per a carregar l'adreça em de carregar el valor del parametre*/
+    if (symboltable[a->text].kind=="idparref") {
+      c=c||"load t"+itostring(t)+" t"+itostring(t);
+    }
+  }
 
+  /*Generar l'adreça d'un accés a struct:
+   *1. Carregar l'adreça de l'struct
+   *2. Sumar l'offset de la variable a l'adreça de l'struct (1)
+   *ptype.hh, tp->offset[string] retorna un int. És una operació pròpia del map.
+   */
+  else if (a->kind==".") {
+    c=GenAddress(child(a,0),t)||
+      "addi t"+itostring(t)+" "+itostring(child(a,0)->tp->offset[child(a,1)->text])+" t"+itostring(t);
+  }
+  
+  /*Generar l'adreça d'una posició de l'Array
+   *Només cal obtenir l'adreça base de l'array i sumar-hi N*sizeof(elems), on N pot ser una expressió
+   *(per això el GenValue).
+   * a->tp->size : Mida dels elements de l'Array
+   */
+  else if (a->kind=="[") {
+    c=GenAddress(child(a,0),t)
+      ||GenValue(child(a,1),t+1)
+      ||"muli t"+itostring(t+1)+" "+itostring(a->tp->size)+" t"+itostring(t+1)
+      ||"addi t"+itostring(t)+ " t"+itostring(t+1)+ " t"+itostring(t);
+  }
+  
   else {
     cout<<"BIG PROBLEM! No case defined for kind "<<a->kind<<endl;
   }
@@ -211,7 +211,6 @@ codechain GenAddress(AST *a,int t)
 }
 
 
-// GenValue és GenValue...to be completed:
 codechain GenValue(AST *a,int t)
 {
   codechain c;
@@ -231,9 +230,13 @@ codechain GenValue(AST *a,int t)
 	  c="load _"+a->text+" t"+itostring(t);
 	}
 
+      /*Cas en que tenim A[i] i el tipus dels elements de l'array és bàsic. "a" correspon al node "[",
+       *que té com a fills ident de l'array i l'expressió del nº d'elements.
+       */
       else if (isbasickind(a->tp->kind))
 	{
-	  c=GenAddress(a,t)||"load t"+itostring(t)+" t"+itostring(t);
+	  c=GenAddress(a,t)
+	    ||"load t"+itostring(t)+" t"+itostring(t);
 	}
   
       else if (a->kind=="[")
@@ -311,28 +314,20 @@ codechain GenValue(AST *a,int t)
 	|| GenValue(child(a,1),t+1)
 	|| "land t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
     }
-
-  //////////////////////////////////////////////
   else if (a->kind=="or")
     {
       c=GenValue(child(a,0),t) 
 	|| GenValue(child(a,1),t+1)
 	|| "loor t"+itostring(t)+" t"+itostring(t+1)+" t"+itostring(t);
     }
-  ///////////////////////////////////////////////
-
   else if (a->kind=="not") {
 		c=GenValue(child(a,0),t)||
 		"lnot t"+itostring(t)+" t"+itostring(t);
   }
-
-  //////////////////////////////////////////////////////////////////////
   else if (a->kind=="."){
     c=GenValue(child(a,0),t)
       || "addi t"+itostring(t)+" "+itostring(child(a,0)->tp->offset[child(a,1)->text])+" t"+itostring(t);
   }
-  ///////////////////////////////////////////////////////////////////////
-
 
   else if (a->kind=="(")
     { 
