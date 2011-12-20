@@ -1,0 +1,31 @@
+Associativitat esquerra:
+------------------------
+Per exemple la potència (3^(4^5))
+expr: NUM (MAS^ NUM)*
+
+
+Associativitat dreta:
+----------------------
+L'arbre es va desenvolupant cap a la dreta. Els operadors habituals com +,*,/,-,etc.
+
+expr: NUM (MAS^ expr | )
+
+
+Final del tutorial:
+-------------------
+program (inttochar)*;
+instruction: ID ASIG^ expr | WRITE^ expr
+
+crea un bosc. Es el que volem, p.ex: 
+
+x:=3+5    write x+1
+
+
+No és el mateix que:
+
+program:(ID ASIG^ expr | WRITE^ expr)*;
+
+
+
+#Test de jocs de proves:
+function test() { ./cl < jp | diff sjp -; }
